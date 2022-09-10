@@ -1,0 +1,8 @@
+### Xcode ###
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+xcuserdata/
+
+### macOS ###
+.DS_Store

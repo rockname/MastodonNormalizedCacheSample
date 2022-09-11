@@ -6,6 +6,10 @@ This app is implemented with the architecture of state management with normalize
 | -- | -- | -- |
 | ![](https://user-images.githubusercontent.com/8536870/189512478-557a8d30-45f9-41f0-9d3a-2988929a55f0.png) | ![](https://user-images.githubusercontent.com/8536870/189512480-57dc1acf-caac-476b-8e4d-ef0b0100683d.png) | ![](https://user-images.githubusercontent.com/8536870/189512477-c78bc70a-62fc-4b8f-971f-78af2a8428ee.png) |
 
+## Requirements
+Xcode 14 beta 1+ <br/>
+iOS 16.0+
+
 ## Motivation
 
 For example, let's say you are developing an iOS application for **mastodon**.<br/>

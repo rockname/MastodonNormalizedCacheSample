@@ -12,7 +12,6 @@ iOS 16.0+
 
 ## Motivation
 
-For example, let's say you are developing an iOS application for **mastodon**.<br/>
 If you develop an iOS app for mastodon, for example, you need to make sure that no matter which screen you use to perform a favorite action on a post, the same post on all screens should reflect the same state.
 The same is true for other mutations, such as updating profile information.
 

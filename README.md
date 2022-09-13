@@ -17,13 +17,29 @@ The same is true for other mutations, such as updating profile information.
 
 To prevent data inconsistencies, a good solution is to hoist up the states that require synchronization as Global State and propagate them to each screen, rather than managing them separately on each screen.
 
-The Single Store architecture such as Redux is well known as a method of managing Global State, but it is an overkill architecture when most of the state to be managed is Server State, such as responses from the server.
+![](https://user-images.githubusercontent.com/8536870/189909897-220a3cf7-ef90-4bd6-a55d-6eaadd80cd6c.png)
+
+The Single Store architecture such as [Redux](https://redux.js.org/) is well known as a method of managing Global State.
+
+![](https://user-images.githubusercontent.com/8536870/189910601-de3f0d60-6319-4c8b-9382-f1ad2e3676c1.png)
+
+But it is an overkill architecture when most of the state to be managed is Server State, such as responses from the server.
+
+![](https://user-images.githubusercontent.com/8536870/189911663-806e97a0-22fd-4b3e-adaa-32e5199a65f6.png)
 
 ## Solution
 
 In order to meet these requirements, the architecture of state management with **Normalized Cache** is adopted.<br/>
 A GraphQL Client library such as [Apollo Client](https://www.apollographql.com/apollo-client) and [Relay](https://relay.dev/) provides this functionality.
 
+![](https://user-images.githubusercontent.com/8536870/189913270-f348277f-0140-4c33-82e2-49f2eab754f9.png)
+
 Normalized Cache is that splitting the data retrieved from the server into individual objects, assign a logically unique identifier to each object, and store them in a flat data structure.
 
+![](https://user-images.githubusercontent.com/8536870/189914659-996d4534-4d8f-414e-83a2-5b64e946a6e3.png)
+
 This allows, for example, in the case of the mastodon application shown in the previous example, favorite actions on a post object will be properly updated by a single uniquely managed post object, so that they can be reflected in the UI of each screen without inconsistencies.
+
+## Detail
+
+TBD

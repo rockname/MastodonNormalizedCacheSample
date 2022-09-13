@@ -25,7 +25,7 @@ The Single Store architecture such as [Redux](https://redux.js.org/) is well kno
 
 But it is an overkill architecture when most of the state to be managed is Server State, such as responses from the server.
 
-![](https://user-images.githubusercontent.com/8536870/189911663-806e97a0-22fd-4b3e-adaa-32e5199a65f6.png)
+![](https://user-images.githubusercontent.com/8536870/189915150-a7b1c3e5-f9af-4cb8-a28a-fe3a977b1708.png)
 
 ## Solution
 

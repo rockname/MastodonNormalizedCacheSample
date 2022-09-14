@@ -557,7 +557,27 @@ Create a `CoreDataAccountCacheStore` to cache `Account` in the same way.
 
 ### Cache Key Store
 
-TBD
+Next, create an `InMemoryCacheKeyStore` class to store identifiers to be assigned to cache objects.
+
+We provide a `cacheKey` property of type `AnyPublisher<CacheKey, Never>` so that we can monitor cache key changes.
+
+```swift
+class InMemoryCacheKeyStore<CacheKey: Equatable> {
+    private let _cacheKey = CurrentValueSubject<CacheKey?, Never>(nil)
+    var cacheKey: AnyPublisher<CacheKey, Never> {
+        _cacheKey.compactMap { $0 }.removeDuplicates().eraseToAnyPublisher()
+    }
+    var currentCacheKey: CacheKey? {
+        _cacheKey.value
+    }
+
+    func store(_ cacheKey: CacheKey) {
+        _cacheKey.send(cacheKey)
+    }
+}
+```
+
+For example, if you get the home timeline, the `CacheKey` to store would be an array of a Status ID.
 
 ### Repository
 

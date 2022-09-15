@@ -1,6 +1,6 @@
 # MastodonNormalizedCacheSample
-This is a mastodon sample SwiftUI app.<br/>
-This app is implemented with the architecture of state management with normalized cache.
+This is a [mastodon](https://joinmastodon.org/) sample SwiftUI app.<br/>
+This app is implemented with the architecture of state management with Normalized Cache.
 
 | Home | Detail | Profile |
 | -- | -- | -- |
@@ -23,7 +23,7 @@ The Single Store architecture such as [Redux](https://redux.js.org/) is well kno
 
 ![](https://user-images.githubusercontent.com/8536870/189910601-de3f0d60-6319-4c8b-9382-f1ad2e3676c1.png)
 
-But it is an overkill architecture when most of the state to be managed is Server State, such as responses from the server.
+But it is an overkill architecture when most of the state to be managed is **Server State** like responses from the server.
 
 ![](https://user-images.githubusercontent.com/8536870/189915150-a7b1c3e5-f9af-4cb8-a28a-fe3a977b1708.png)
 
@@ -38,7 +38,7 @@ Normalized Cache is that splitting the data retrieved from the server into indiv
 
 ![](https://user-images.githubusercontent.com/8536870/189914659-996d4534-4d8f-414e-83a2-5b64e946a6e3.png)
 
-This allows, for example, in the case of the mastodon application shown in the previous example, favorite actions on a post object will be properly updated by a single uniquely managed post object, so that they can be reflected in the UI of each screen without inconsistencies.
+This allows, for example, in the case of the mastodon app shown in the previous example, favorite actions on a post object will be properly updated by a single uniquely managed post object, so that they can be reflected in the UI of each screen without inconsistencies.
 
 ## Detail
 
@@ -623,7 +623,7 @@ struct HomeTimelineRepository {
 
 ### UI
 
-In the UI implementation of the home timeline, `HomeTimelineRepository.watch` method is called at View initialization to start observing cache changes, and `HomeTimelineRepository.fetchTimeline` is used to retrieve the timeline from the API and store it in the cache when the View appears.
+In the UI implementation of the home timeline, call `HomeTimelineRepository.watch` method at View initialization to start observing cache changes, and call `HomeTimelineRepository.fetchTimeline` on View appeared to retrieve the timeline from the API and store it in the cache.
 
 Handle the event of a favorite add/delete button tap on each post and call the corresponding `HomeTimelineRepository` method appropriately.
 

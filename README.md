@@ -179,11 +179,11 @@ class CoreDataStatusCacheStore {
 }
 ```
 
-Let's add the implementation around change monitoring on Core Data.
+Let's add the implementation around change observing on Core Data.
 
-Core Data allows you to monitor changes to data on Core Data using [NSFetchedResultsControllerDelegate](https://developer.apple.com/documentation/coredata/nsfetchedresultscontrollerdelegate).
+Core Data allows you to observe changes to data on Core Data using [NSFetchedResultsControllerDelegate](https://developer.apple.com/documentation/coredata/nsfetchedresultscontrollerdelegate).
 
-So we will create a custom Publisher containing this monitoring process.
+So we will create a custom Publisher containing this observing process.
 
 ```swift
 protocol CoreDataModel {
@@ -273,6 +273,8 @@ class CoreDataModelSubscription<
 ```
 
 All that remains is to add a method that returns this custom Publisher into `CoreDataStatusCacheStore`.<br/>
+This method receives `CacheKey` as a parameter for spefifying observed data.
+
 The Core Data writing process was done in the Background Context, but the reading process is done in the View Context.
 
 ```swift
@@ -395,10 +397,10 @@ class CoreDataStore {
 }
 ```
 
-Another point to note is that `NSFetchedResultsControllerDelegate` cannot monitor relationship changes.<br/>
+Another point to note is that `NSFetchedResultsControllerDelegate` cannot observe relationship changes.<br/>
 That is, if the `username` of an `Account` associated with a `Status` is changed, the `NSFetchedResultsControllerDelegate` will NOT receive notification of the change.
 
-Therefore, we need to implement an additional relationship monitoring process.
+Therefore, we need to implement an additional relationship observing process.
 
 To do so, make a `CoreDataModelPublisher` combinable another `CoreDataModelPublisher`.
 
@@ -492,7 +494,7 @@ class CoreDataModelSubscription<
 }
 ```
 
-After that, combine a Publisher monitoring an account relationship into a Publisher monitoring a status on `CoreDataStatusCacheStore.watch` method.
+After that, combine a Publisher observing an account relationship into a Publisher observing a status on `CoreDataStatusCacheStore.watch` method.
 
 ```diff
 class CoreDataStatusCacheStore {
@@ -559,7 +561,7 @@ Create a `CoreDataAccountCacheStore` to cache `Account` in the same way.
 
 Next, create an `InMemoryCacheKeyStore` class to store identifiers to be assigned to cache objects.
 
-We provide a `cacheKey` property of type `AnyPublisher<CacheKey, Never>` so that we can monitor cache key changes.
+We provide a `cacheKey` property of type `AnyPublisher<CacheKey, Never>` so that we can observe cache key changes.
 
 ```swift
 class InMemoryCacheKeyStore<CacheKey: Equatable> {
@@ -577,15 +579,155 @@ class InMemoryCacheKeyStore<CacheKey: Equatable> {
 }
 ```
 
-For example, if you get the home timeline, the `CacheKey` to store would be an array of a Status ID.
+For example, if you fetch the home timeline response, the `CacheKey` to store would be an array of a Status ID (and an Account ID pair to observe relationship).
 
 ### Repository
 
-TBD
+We will implement the process of throwing a request to the API, retrieving the response, and storing it in the cache in a `Repository`.
+
+Let's take the home timeline as an example.
+
+Create a `HomeTimelineRepository` struct and add a process to retrieve the timeline from the API and cache it.
+
+```swift
+struct HomeTimelineRepository {
+    let apiClient: APIClient = .init()
+    let statusCacheStore: CoreDataStatusCacheStore = .init()
+    let cacheKeyStore: InMemoryCacheKeyStore<TimelineCacheKey> = .init()
+
+    func fetchTimeline() async throws {
+        let response = try await apiClient.send(GetHomeTimelineRequest())
+        try await statusCacheStore.store(response)
+        cacheKeyStore.store(TimelineCacheKey(statusCacheKeys: response.map { status in
+            StatusCacheKey(statusID: status.id, accountCacheKey: .init(accountID: status.account.id))
+        }))
+    }
+```
+
+In addition, implement a method to add/remove posts to/from favorites.
+
+```swift
+struct HomeTimelineRepository {
+    ...
+    func favoriteStatus(by id: Status.ID) async throws {
+        let response = try await apiClient.send(PostStatusFavoriteRequest(id: id))
+        try await statusCacheStore.store(response)
+    }
+
+    func unfavoriteStatus(by id: Status.ID) async throws {
+        let response = try await apiClient.send(PostStatusUnfavoriteRequest(id: id))
+        try await statusCacheStore.store(response)
+    }
+}
+```
 
 ### UI
 
-TBD
+In the UI implementation of the home timeline, `HomeTimelineRepository.watch` method is called at View initialization to start observing cache changes, and `HomeTimelineRepository.fetchTimeline` is used to retrieve the timeline from the API and store it in the cache when the View appears.
+
+Handle the event of a favorite add/delete button tap on each post and call the corresponding `HomeTimelineRepository` method appropriately.
+
+This allows observed cache changes to be reflected in the UI automatically.
+
+```swift
+@MainActor
+class HomeTimelineViewModel: ObservableObject {
+    @Published private(set) var uiState: HomeTimelineUIState = .initial
+
+    private let homeTimelineRepository: HomeTimelineRepository
+    private var cancellables = Set<AnyCancellable>()
+
+    init(homeTimelineRepository: HomeTimelineRepository = .init()) {
+        self.homeTimelineRepository = homeTimelineRepository
+        homeTimelineRepository.watch()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] statuses in
+                if statuses.isEmpty {
+                    self?.uiState = .noStatuses
+                } else {
+                    self?.uiState = .hasStatuses(statuses: statuses)
+                }
+            }
+            .store(in: &cancellables)
+    }
+
+    func onAppear() async {
+        guard case .initial = uiState else { return }
+
+        do {
+            uiState = .loading
+            try await homeTimelineRepository.fetchInitialTimeline()
+        } catch {
+            print(error)
+        }
+    }
+    
+    func onFavoriteTapped(statusID: Status.ID) async {
+        do {
+            try await homeTimelineRepository.favoriteStatus(by: statusID)
+        } catch {
+            print(error)
+        }
+    }
+
+    func onUnfavoriteTapped(statusID: Status.ID) async {
+        do {
+            try await homeTimelineRepository.unfavoriteStatus(by: statusID)
+        } catch {
+            print(error)
+        }
+    }
+}
+```
+
+```swift
+struct HomeTimelineScreen: View {
+    @StateObject private var viewModel: HomeTimelineViewModel
+
+    init(homeTimelineRepository: HomeTimelineRepository = .init()) {
+        _viewModel = StateObject(wrappedValue: HomeTimelineViewModel())
+    }
+
+    var body: some View {
+        ZStack {
+            switch viewModel.uiState {
+            case .initial:
+                ZStack {}
+            case .loading:
+                ProgressView()
+            case .noStatuses:
+                Text("No statuses")
+            case let .hasStatuses(statuses):
+                TimelineContent(
+                    statuses: statuses,
+                    onFavoriteTapped: { statusID in
+                        Task {
+                            await viewModel.onFavoriteTapped(statusID: statusID)
+                        }
+                    },
+                    onUnfavoriteTapped: { statusID in
+                        Task {
+                            await viewModel.onUnfavoriteTapped(statusID: statusID)
+                        }
+                    }
+                )
+            }
+        }
+        .task {
+            await viewModel.onAppear()
+        }
+    }
+}
+```
+
+The same applies to other screens, define a corresponding `Repository` and connect it appropriately to cache that should be observed.
+
+## Summary
+
+This is how to implement a mastodon app that adopts a state management architecture with Normalized Cache.
 
 ![](https://user-images.githubusercontent.com/8536870/190175937-d2d3a244-7d3b-459f-b81b-1580ca1b53d3.png)
 
+At closing, I would like to thank for the official mastodon app, which has been very helpful.
+
+https://github.com/mastodon/mastodon-ios
